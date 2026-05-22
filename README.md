@@ -30,6 +30,33 @@ DirettaOs/
 └── third_party/                      # 第三方资产说明（归档文件走同步盘/外部存储）
 ```
 
+## 自动化构建 appliance rootfs
+
+仓库现在提供一个可直接执行的自动化打包脚本：
+
+```bash
+chmod +x scripts/build-appliance-image.sh
+DIRETTA_SDK_PATH=$HOME/audio/DirettaHostSDK_149 \
+./scripts/build-appliance-image.sh --board-pack raspberry-pi-5 --payload-mode diretta-personal-use
+```
+
+默认行为：
+- 生成 board pack 对应的 appliance rootfs stage
+- 在 payload 模式下自动构建 `references/DirettaRendererUPnP`
+- 将 renderer、systemd unit、web UI、onboarding、preset、manifest 一起打包到 `out/artifacts/`
+- 输出：
+  - `*-rootfs.tar.gz`
+  - `*-metadata.tar.gz`
+  - 各自的 `sha256`
+
+如果只想构建不含 Diretta payload 的平台基础镜像：
+
+```bash
+./scripts/build-appliance-image.sh --board-pack raspberry-pi-5 --payload-mode platform-only
+```
+
+当前脚本面向 **自动化 rootfs/stage 产物**，不是最终可直接刷写的完整 block image；它先把镜像装配链和元数据链打通，后续再继续补 boot 分区、分区表、刷写镜像和更新签名流程。
+
 ## Self-hosted runner 快速开始
 
 ### 一键脚本

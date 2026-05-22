@@ -11,6 +11,7 @@ ffmpeg-headers/
 vendor/
 _work/
 runner.log
+*.sha256
 
 # python caches
 __pycache__/
