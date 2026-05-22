@@ -17,13 +17,14 @@ require_cmd() {
 }
 
 RUNNER_VERSION="2.328.0"
-RUNNER_DIR="${RUNNER_DIR:-$HOME/actions-runner}"
+RUNNER_DIR="${RUNNER_DIR:-$HOME/actions-runner-direttaos}"
 RUNNER_NAME="${RUNNER_NAME:-$(hostname)-diretta-builder}"
 RUNNER_LABELS="${RUNNER_LABELS:-self-hosted,linux,x64,diretta-builder}"
-GH_REPO="${GH_REPO:-niver2002/audio-linux-os}"
+GH_REPO="${GH_REPO:-niver2002/DirettaOs}"
 SDK_DIR="${SDK_DIR:-$HOME/audio/DirettaHostSDK_149}"
+SDK_ARCHIVE="${SDK_ARCHIVE:-${SYNC_ASSET_DIR:-$HOME/syncdisk/diretta-assets}/DirettaHostSDK_149_6.tar.zst}"
 
-info "DirettaRendererUPnP self-hosted runner setup"
+info "DirettaOs self-hosted runner setup"
 
 require_cmd curl
 require_cmd tar
@@ -45,9 +46,11 @@ fi
 
 mkdir -p "$HOME/audio"
 if [ ! -d "$SDK_DIR/lib" ] || [ ! -d "$SDK_DIR/Host" ]; then
-  if [ -f "./DirettaHostSDK_149_6.tar.zst" ]; then
-    info "Extracting bundled DirettaHostSDK_149_6.tar.zst to $HOME/audio"
-    tar --zstd -xf "./DirettaHostSDK_149_6.tar.zst" -C "$HOME/audio"
+  if [ -f "$SDK_ARCHIVE" ]; then
+    info "Extracting SDK archive from $SDK_ARCHIVE to $HOME/audio"
+    tar --zstd -xf "$SDK_ARCHIVE" -C "$HOME/audio"
+  else
+    warn "SDK archive not found at $SDK_ARCHIVE"
   fi
 fi
 
@@ -101,7 +104,7 @@ else
 fi
 
 mkdir -p "$HOME/.config/systemd/user"
-cat > "$HOME/.config/systemd/user/github-runner.service" <<EOF
+cat > "$HOME/.config/systemd/user/github-runner-direttaos.service" <<EOF
 [Unit]
 Description=GitHub Actions Runner for ${GH_REPO}
 After=network-online.target
@@ -122,26 +125,26 @@ WantedBy=default.target
 EOF
 
 systemctl --user daemon-reload || true
-systemctl --user enable github-runner.service || true
+systemctl --user enable github-runner-direttaos.service || true
 
-cat > "$HOME/start-runner.sh" <<EOF
+cat > "$HOME/start-runner-direttaos.sh" <<EOF
 #!/usr/bin/env bash
 export DIRETTA_SDK_PATH="${SDK_DIR}"
-cd "$HOME/actions-runner"
+cd "${RUNNER_DIR}"
 exec ./run.sh
 EOF
-chmod +x "$HOME/start-runner.sh"
+chmod +x "$HOME/start-runner-direttaos.sh"
 
-cat > "$HOME/start-runner-bg.sh" <<EOF
+cat > "$HOME/start-runner-direttaos-bg.sh" <<EOF
 #!/usr/bin/env bash
 export DIRETTA_SDK_PATH="${SDK_DIR}"
-cd "$HOME/actions-runner"
-nohup ./run.sh > "$HOME/runner.log" 2>&1 &
-echo "Runner started. Log: $HOME/runner.log"
+cd "${RUNNER_DIR}"
+nohup ./run.sh > "$HOME/runner-direttaos.log" 2>&1 &
+echo "Runner started. Log: $HOME/runner-direttaos.log"
 EOF
-chmod +x "$HOME/start-runner-bg.sh"
+chmod +x "$HOME/start-runner-direttaos-bg.sh"
 
-cat > "$HOME/runner-status.sh" <<'EOF'
+cat > "$HOME/runner-direttaos-status.sh" <<'EOF'
 #!/usr/bin/env bash
 if pgrep -f "Runner.Listener" >/dev/null; then
   echo "RUNNING pid=$(pgrep -f Runner.Listener | paste -sd, -)"
@@ -149,11 +152,11 @@ else
   echo "STOPPED"
 fi
 EOF
-chmod +x "$HOME/runner-status.sh"
+chmod +x "$HOME/runner-direttaos-status.sh"
 
 success "Runner setup complete"
 echo
-echo "Foreground start: $HOME/start-runner.sh"
-echo "Background start: $HOME/start-runner-bg.sh"
-echo "Status:           $HOME/runner-status.sh"
-echo "Service:          systemctl --user start github-runner.service"
+echo "Foreground start: $HOME/start-runner-direttaos.sh"
+echo "Background start: $HOME/start-runner-direttaos-bg.sh"
+echo "Status:           $HOME/runner-direttaos-status.sh"
+echo "Service:          systemctl --user start github-runner-direttaos.service"

@@ -1,4 +1,4 @@
-# audio-linux-os
+# DirettaOs
 
 面向高音质播放链路的 Linux / appliance 平台仓库。
 
@@ -8,7 +8,7 @@
 - `scripts/`：构建机和 runner 脚本
 - `docs/`：平台文档、SDK 资产说明、路线图
 - `references/DirettaRendererUPnP/`：作为参考源码收纳的 DirettaRendererUPnP 工程
-- `third_party/archives/`：用户提供的 Diretta 相关官方归档文件
+- `third_party/`：第三方资产说明；大体积官方归档不进入 Git
 
 ## 设计原则
 
@@ -20,31 +20,34 @@
 ## 目录结构
 
 ```text
-audio-linux-os/
+DirettaOs/
 ├── .github/workflows/                # self-hosted 构建工作流
 ├── docs/                             # 平台文档、SDK 说明、路线图
 ├── image/                            # appliance / board-pack / onboarding / recovery
 ├── references/
 │   └── DirettaRendererUPnP/          # 参考源码目录
 ├── scripts/                          # runner / 构建辅助脚本
-└── third_party/archives/             # 官方归档资产
+└── third_party/                      # 第三方资产说明（归档文件走同步盘/外部存储）
 ```
 
 ## Self-hosted runner 快速开始
 
 1. 在 Linux x86_64 构建机上 clone 本仓库
-2. 运行：
+2. 准备 SDK 归档或已解压目录：
+   - 默认解压目标：`$HOME/audio/DirettaHostSDK_149`
+   - 默认归档路径：`$HOME/syncdisk/diretta-assets/DirettaHostSDK_149_6.tar.zst`
+3. 运行：
 
 ```bash
 chmod +x scripts/setup-runner.sh
-./scripts/setup-runner.sh
+GH_REPO=niver2002/DirettaOs ./scripts/setup-runner.sh
 ```
 
 脚本会：
 - 安装 runner 和构建依赖
-- 检查/解压 `third_party/archives/DirettaHostSDK_149_6.tar.zst`
+- 检查/解压 `DirettaHostSDK_149_6.tar.zst`
 - 配置 `DIRETTA_SDK_PATH=$HOME/audio/DirettaHostSDK_149`
-- 注册 self-hosted runner 到本仓库
+- 注册 self-hosted runner 到当前仓库
 
 ## 当前重点
 
