@@ -37,7 +37,7 @@ DirettaOs/
 如果云电脑已经装好 `git` / `tar` / `bash`，并且同步盘里有 SDK 归档，可以直接运行：
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/niver2002/DirettaOs/main/scripts/bootstrap-cloud-runner.sh -o /tmp/bootstrap-cloud-runner.sh
+curl -fL --progress-bar https://raw.githubusercontent.com/niver2002/DirettaOs/main/scripts/bootstrap-cloud-runner.sh -o /tmp/bootstrap-cloud-runner.sh
 chmod +x /tmp/bootstrap-cloud-runner.sh
 /tmp/bootstrap-cloud-runner.sh
 ```

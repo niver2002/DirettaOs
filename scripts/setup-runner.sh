@@ -16,6 +16,17 @@ require_cmd() {
   command -v "$1" >/dev/null 2>&1 || { error "Missing command: $1"; exit 1; }
 }
 
+download_file() {
+  local url="$1"
+  local output="$2"
+
+  info "Downloading $(basename "$output")"
+  curl -fL --progress-bar -o "$output" "$url"
+  local size
+  size="$(du -h "$output" | cut -f1)"
+  success "Downloaded $(basename "$output") (${size})"
+}
+
 RUNNER_VERSION="2.328.0"
 RUNNER_DIR="${RUNNER_DIR:-$HOME/actions-runner-direttaos}"
 RUNNER_NAME="${RUNNER_NAME:-$(hostname)-diretta-builder}"
@@ -85,8 +96,9 @@ cd "$RUNNER_DIR"
 
 if [ ! -f ./config.sh ]; then
   info "Downloading GitHub Actions runner v${RUNNER_VERSION}"
-  curl -fsSL -o actions-runner.tar.gz \
-    "https://github.com/actions/runner/releases/download/v${RUNNER_VERSION}/actions-runner-linux-x64-${RUNNER_VERSION}.tar.gz"
+  download_file \
+    "https://github.com/actions/runner/releases/download/v${RUNNER_VERSION}/actions-runner-linux-x64-${RUNNER_VERSION}.tar.gz" \
+    "actions-runner.tar.gz"
   tar xzf actions-runner.tar.gz
   rm -f actions-runner.tar.gz
 fi

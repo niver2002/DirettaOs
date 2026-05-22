@@ -22,6 +22,19 @@ require_cmd() {
   }
 }
 
+copy_with_progress() {
+  local source="$1"
+  local target="$2"
+
+  if command -v rsync >/dev/null 2>&1; then
+    info "Copying $(basename "$source") to $(dirname "$target")"
+    rsync -ah --info=progress2 "$source" "$target"
+  else
+    warn "rsync not available; using cp without progress"
+    cp "$source" "$target"
+  fi
+}
+
 require_cmd git
 require_cmd bash
 require_cmd tar
@@ -41,7 +54,16 @@ if [ ! -d "$SDK_DIR/Host" ] || [ ! -d "$SDK_DIR/lib" ]; then
     info "Extracting SDK archive from $SDK_ARCHIVE"
     tar --zstd -xf "$SDK_ARCHIVE" -C "$HOME/audio"
   else
-    warn "SDK archive not found at $SDK_ARCHIVE"
+    local_sdk_download="$HOME/Downloads/DirettaHostSDK_149_6.tar.zst"
+    if [ -f "$local_sdk_download" ]; then
+      mkdir -p "$SYNC_ASSET_DIR"
+      copy_with_progress "$local_sdk_download" "$SYNC_ASSET_DIR/"
+      SDK_ARCHIVE="$SYNC_ASSET_DIR/DirettaHostSDK_149_6.tar.zst"
+      info "Extracting SDK archive from $SDK_ARCHIVE"
+      tar --zstd -xf "$SDK_ARCHIVE" -C "$HOME/audio"
+    else
+      warn "SDK archive not found at $SDK_ARCHIVE or $local_sdk_download"
+    fi
   fi
 fi
 
