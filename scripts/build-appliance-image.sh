@@ -14,6 +14,11 @@ OUTPUT_DIR="$ROOT_DIR/out"
 IMAGE_ID=""
 ARCH_NAME="${ARCH_NAME:-}"
 DIRETTA_SDK_PATH="${DIRETTA_SDK_PATH:-}"
+BASE_IMAGE_PATH="${BASE_IMAGE_PATH:-}"
+BOOT_FIRMWARE_DIR="${BOOT_FIRMWARE_DIR:-}"
+BOOT_SIZE_MB="${BOOT_SIZE_MB:-256}"
+ROOT_SIZE_MB="${ROOT_SIZE_MB:-4096}"
+FINAL_IMAGE_NAME=""
 
 log() {
   printf '[INFO] %s\n' "$*"
@@ -33,14 +38,19 @@ usage() {
 Usage: build-appliance-image.sh [options]
 
 Options:
-  --board-pack <name>      Board pack name (default: raspberry-pi-5)
-  --channel <name>         Release channel (default: stable)
-  --payload-mode <mode>    diretta-personal-use | platform-only (default: diretta-personal-use)
-  --version <value>        Build version string
-  --output-dir <path>      Output root directory (default: ./out)
-  --image-id <value>       Override generated image id
-  --arch-name <value>      Override Diretta SDK architecture variant
-  --sdk-path <path>        Diretta SDK path (or use DIRETTA_SDK_PATH env)
+  --board-pack <name>        Board pack name (default: raspberry-pi-5)
+  --channel <name>           Release channel (default: stable)
+  --payload-mode <mode>      diretta-personal-use | platform-only (default: diretta-personal-use)
+  --version <value>          Build version string
+  --output-dir <path>        Output root directory (default: ./out)
+  --image-id <value>         Override generated image id
+  --arch-name <value>        Override Diretta SDK architecture variant
+  --sdk-path <path>          Diretta SDK path (or use DIRETTA_SDK_PATH env)
+  --base-image <path>        Existing .img base image to mutate into final OS image
+  --boot-firmware-dir <dir>  Firmware/boot files to seed a fresh boot partition image
+  --boot-size-mb <num>       Boot partition size for fresh image mode (default: 256)
+  --root-size-mb <num>       Root partition size for fresh image mode (default: 4096)
+  --final-image-name <name>  Override final .img artifact name
 EOF
 }
 
@@ -52,6 +62,18 @@ copy_tree() {
     rsync -a "$src/" "$dst/"
   else
     cp -a "$src/." "$dst/"
+  fi
+}
+
+need_cmd() {
+  command -v "$1" >/dev/null 2>&1 || fail "Missing required command: $1"
+}
+
+as_root() {
+  if [ "${EUID}" -eq 0 ]; then
+    "$@"
+  else
+    sudo "$@"
   fi
 }
 
@@ -67,6 +89,111 @@ resolve_arch_name() {
       fail "Unsupported board pack: $BOARD_PACK"
       ;;
   esac
+}
+
+resolve_board_family() {
+  grep '^board_family=' "$IMAGE_DIR/boards/$BOARD_PACK/manifest.env" | cut -d= -f2-
+}
+
+create_fresh_image() {
+  local image_path="$1"
+  local boot_src="$2"
+  local root_src="$3"
+  local mount_root="$4"
+  local boot_mount="$mount_root/boot"
+  local root_mount="$mount_root/root"
+  local total_mb=$((BOOT_SIZE_MB + ROOT_SIZE_MB + 16))
+
+  need_cmd truncate
+  need_cmd parted
+  need_cmd losetup
+  need_cmd mkfs.vfat
+  need_cmd mkfs.ext4
+  need_cmd mount
+  need_cmd umount
+
+  log "Creating fresh raw image at $image_path"
+  truncate -s "${total_mb}M" "$image_path"
+  as_root parted -s "$image_path" mklabel msdos
+  as_root parted -s "$image_path" mkpart primary fat32 1MiB "$((BOOT_SIZE_MB + 1))MiB"
+  as_root parted -s "$image_path" set 1 boot on
+  as_root parted -s "$image_path" mkpart primary ext4 "$((BOOT_SIZE_MB + 1))MiB" 100%
+
+  local loopdev
+  loopdev="$(as_root losetup --show --find --partscan "$image_path")"
+  trap 'cleanup_loop_mounts "$mount_root" "${loopdev:-}"' EXIT
+
+  as_root mkfs.vfat -n DIRETTA_BOOT "${loopdev}p1"
+  as_root mkfs.ext4 -F -L DIRETTA_ROOT "${loopdev}p2"
+
+  mkdir -p "$boot_mount" "$root_mount"
+  as_root mount "${loopdev}p1" "$boot_mount"
+  as_root mount "${loopdev}p2" "$root_mount"
+
+  copy_into_mount "$boot_src" "$boot_mount"
+  copy_into_mount "$root_src" "$root_mount"
+
+  as_root sync
+  cleanup_loop_mounts "$mount_root" "$loopdev"
+  trap - EXIT
+}
+
+mutate_base_image() {
+  local base_image="$1"
+  local image_path="$2"
+  local boot_src="$3"
+  local root_src="$4"
+  local mount_root="$5"
+  local boot_mount="$mount_root/boot"
+  local root_mount="$mount_root/root"
+
+  need_cmd losetup
+  need_cmd mount
+  need_cmd umount
+
+  cp "$base_image" "$image_path"
+  local loopdev
+  loopdev="$(as_root losetup --show --find --partscan "$image_path")"
+  trap 'cleanup_loop_mounts "$mount_root" "${loopdev:-}"' EXIT
+
+  mkdir -p "$boot_mount" "$root_mount"
+  as_root mount "${loopdev}p1" "$boot_mount"
+  as_root mount "${loopdev}p2" "$root_mount"
+
+  copy_into_mount "$boot_src" "$boot_mount"
+  copy_into_mount "$root_src" "$root_mount"
+
+  as_root sync
+  cleanup_loop_mounts "$mount_root" "$loopdev"
+  trap - EXIT
+}
+
+copy_into_mount() {
+  local src="$1"
+  local dst="$2"
+
+  if command -v rsync >/dev/null 2>&1; then
+    as_root rsync -a "$src/" "$dst/"
+  else
+    as_root cp -a "$src/." "$dst/"
+  fi
+}
+
+cleanup_loop_mounts() {
+  local mount_root="$1"
+  local loopdev="$2"
+  local boot_mount="$mount_root/boot"
+  local root_mount="$mount_root/root"
+
+  if mountpoint -q "$boot_mount"; then
+    as_root umount "$boot_mount"
+  fi
+  if mountpoint -q "$root_mount"; then
+    as_root umount "$root_mount"
+  fi
+  if [ -n "$loopdev" ] && as_root losetup "$loopdev" >/dev/null 2>&1; then
+    as_root losetup -d "$loopdev"
+  fi
 }
 
 while [ $# -gt 0 ]; do
@@ -103,6 +230,26 @@ while [ $# -gt 0 ]; do
       DIRETTA_SDK_PATH="$2"
       shift 2
       ;;
+    --base-image)
+      BASE_IMAGE_PATH="$2"
+      shift 2
+      ;;
+    --boot-firmware-dir)
+      BOOT_FIRMWARE_DIR="$2"
+      shift 2
+      ;;
+    --boot-size-mb)
+      BOOT_SIZE_MB="$2"
+      shift 2
+      ;;
+    --root-size-mb)
+      ROOT_SIZE_MB="$2"
+      shift 2
+      ;;
+    --final-image-name)
+      FINAL_IMAGE_NAME="$2"
+      shift 2
+      ;;
     -h|--help)
       usage
       exit 0
@@ -124,8 +271,24 @@ if [ -z "$IMAGE_ID" ]; then
   IMAGE_ID="direttaos-${BOARD_PACK}-${CHANNEL}-${VERSION}"
 fi
 
+if [ -z "$FINAL_IMAGE_NAME" ]; then
+  FINAL_IMAGE_NAME="${IMAGE_ID}.img"
+fi
+
 if [ "$PAYLOAD_MODE" != "diretta-personal-use" ] && [ "$PAYLOAD_MODE" != "platform-only" ]; then
   fail "Unsupported payload mode: $PAYLOAD_MODE"
+fi
+
+if [ -n "$BASE_IMAGE_PATH" ] && [ ! -f "$BASE_IMAGE_PATH" ]; then
+  fail "Base image not found: $BASE_IMAGE_PATH"
+fi
+
+if [ -n "$BOOT_FIRMWARE_DIR" ] && [ ! -d "$BOOT_FIRMWARE_DIR" ]; then
+  fail "Boot firmware directory not found: $BOOT_FIRMWARE_DIR"
+fi
+
+if [ -z "$BASE_IMAGE_PATH" ] && [ -z "$BOOT_FIRMWARE_DIR" ]; then
+  warn "No base image or boot firmware directory supplied; raw .img build will be skipped"
 fi
 
 STAGE_ROOT="$OUTPUT_DIR/stage/$IMAGE_ID"
@@ -135,9 +298,11 @@ METADATA_DIR="$STAGE_ROOT/metadata"
 IMAGE_WORK_DIR="$STAGE_ROOT/image"
 BOOT_DIR="$IMAGE_WORK_DIR/boot"
 ROOT_PART_DIR="$IMAGE_WORK_DIR/rootfs"
+MOUNT_ROOT="$STAGE_ROOT/mnt"
 PAYLOAD_INSTALL_PATH="/opt/diretta-renderer-upnp"
 APPLIANCE_ROOT="$ROOTFS_DIR/opt/diretta-appliance"
 PAYLOAD_ROOT="$ROOTFS_DIR${PAYLOAD_INSTALL_PATH}"
+FINAL_IMAGE_PATH="$ARTIFACT_DIR/$FINAL_IMAGE_NAME"
 
 rm -rf "$STAGE_ROOT"
 mkdir -p \
@@ -149,7 +314,8 @@ mkdir -p \
   "$ARTIFACT_DIR" \
   "$METADATA_DIR" \
   "$BOOT_DIR" \
-  "$ROOT_PART_DIR"
+  "$ROOT_PART_DIR" \
+  "$MOUNT_ROOT"
 
 log "Preparing base appliance layout for $BOARD_PACK"
 copy_tree "$IMAGE_DIR/common/presets" "$ROOTFS_DIR/usr/share/diretta-appliance/presets"
@@ -246,7 +412,7 @@ cp "$IMAGE_DIR/boards/$BOARD_PACK/manifest.env" "$METADATA_DIR/board-pack.env"
 
 cat > "$BOOT_DIR/board-pack.env" <<EOF
 board_pack=${BOARD_PACK}
-board_family=$(grep '^board_family=' "$IMAGE_DIR/boards/$BOARD_PACK/manifest.env" | cut -d= -f2-)
+board_family=$(resolve_board_family)
 channel=${CHANNEL}
 version=${VERSION}
 image_id=${IMAGE_ID}
@@ -262,6 +428,11 @@ cat > "$BOOT_DIR/config.txt" <<EOF
 arm_64bit=1
 enable_uart=1
 EOF
+
+if [ -n "$BOOT_FIRMWARE_DIR" ]; then
+  log "Copying boot firmware from $BOOT_FIRMWARE_DIR"
+  copy_tree "$BOOT_FIRMWARE_DIR" "$BOOT_DIR"
+fi
 
 copy_tree "$ROOTFS_DIR" "$ROOT_PART_DIR"
 
@@ -290,11 +461,26 @@ log "Packaging rootfs artifact"
 tar -C "$ROOTFS_DIR" -czf "$ROOTFS_ARCHIVE" .
 sha256sum "$ROOTFS_ARCHIVE" > "$ROOTFS_ARCHIVE.sha256"
 
+log "Packaging metadata artifact"
 tar -C "$METADATA_DIR" -czf "$MANIFEST_ARCHIVE" .
 sha256sum "$MANIFEST_ARCHIVE" > "$MANIFEST_ARCHIVE.sha256"
 
+log "Packaging final image content archive"
 tar -C "$IMAGE_WORK_DIR" -czf "$FINAL_IMAGE_ARCHIVE" .
 sha256sum "$FINAL_IMAGE_ARCHIVE" > "$FINAL_IMAGE_ARCHIVE.sha256"
+
+FINAL_RAW_IMAGE=""
+if [ -n "$BASE_IMAGE_PATH" ] || [ -n "$BOOT_FIRMWARE_DIR" ]; then
+  if [ -n "$BASE_IMAGE_PATH" ]; then
+    log "Creating final raw image from base image"
+    mutate_base_image "$BASE_IMAGE_PATH" "$FINAL_IMAGE_PATH" "$BOOT_DIR" "$ROOT_PART_DIR" "$MOUNT_ROOT"
+  else
+    log "Creating final raw image from staged boot/rootfs content"
+    create_fresh_image "$FINAL_IMAGE_PATH" "$BOOT_DIR" "$ROOT_PART_DIR" "$MOUNT_ROOT"
+  fi
+  sha256sum "$FINAL_IMAGE_PATH" > "$FINAL_IMAGE_PATH.sha256"
+  FINAL_RAW_IMAGE="$FINAL_IMAGE_PATH"
+fi
 
 log "Build complete"
 printf 'Boot artifact: %s\n' "$BOOT_ARCHIVE"
@@ -302,3 +488,8 @@ printf 'Root partition artifact: %s\n' "$ROOT_PART_ARCHIVE"
 printf 'Rootfs artifact: %s\n' "$ROOTFS_ARCHIVE"
 printf 'Metadata artifact: %s\n' "$MANIFEST_ARCHIVE"
 printf 'Final image artifact: %s\n' "$FINAL_IMAGE_ARCHIVE"
+if [ -n "$FINAL_RAW_IMAGE" ]; then
+  printf 'Final raw image: %s\n' "$FINAL_RAW_IMAGE"
+else
+  printf 'Final raw image: skipped (set --base-image or --boot-firmware-dir)\n'
+fi

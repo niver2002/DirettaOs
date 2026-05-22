@@ -53,13 +53,26 @@ DIRETTA_SDK_PATH=$HOME/audio/DirettaHostSDK_149 \
   - `*-os-image.tar.gz`
   - 各自的 `sha256`
 
-如果只想构建不含 Diretta payload 的平台基础镜像：
+如果已有参考基础镜像，可继续生成最终 `.img`：
 
 ```bash
-./scripts/build-appliance-image.sh --board-pack raspberry-pi-5 --payload-mode platform-only
+DIRETTA_SDK_PATH=$HOME/audio/DirettaHostSDK_149 \
+./scripts/build-appliance-image.sh \
+  --board-pack raspberry-pi-5 \
+  --payload-mode diretta-personal-use \
+  --base-image /path/to/base-image.img
 ```
 
-当前脚本现在会产出 **可自动装配的最终镜像内容包**：boot 分区内容、rootfs 分区内容、完整 rootfs、元数据包和统一 `os-image` 打包产物，便于在 CI / 构建机上继续串接真正的 block-image 生成、刷写和签名流程。
+如果没有基础镜像，但你有可用的 boot firmware 目录，也可以直接生成新的原始镜像：
+
+```bash
+DIRETTA_SDK_PATH=$HOME/audio/DirettaHostSDK_149 \
+./scripts/build-appliance-image.sh \
+  --board-pack raspberry-pi-5 \
+  --payload-mode diretta-personal-use \
+  --boot-firmware-dir /path/to/boot-firmware
+```
+
 
 ## Self-hosted runner 快速开始
 
