@@ -52,7 +52,8 @@ PREBUILT_IMAGE_ZIP=$HOME/Downloads/diretta_RaspberryPi5_149_16_includeRoonBridge
 
 - 自动更新仓库
 - 自动调用镜像装配脚本
-- 自动产出最终 `.img`（当输入完整时）
+- 默认自动尝试消费官方 Pi5 预制镜像 zip
+- 自动产出最终 `.img`（当 runner 上默认输入存在时）
 - 将产物保留在 `out/artifacts/`
 
 ## 自动化构建 appliance rootfs
@@ -101,20 +102,25 @@ DIRETTA_SDK_PATH=$HOME/audio/DirettaHostSDK_149 \
 
 ### GitHub Actions 自动构建最终镜像
 
-仓库的 self-hosted workflow 现在会直接调用 `scripts/build-appliance-image.sh`，并上传 `out/artifacts/` 下的镜像产物。
+仓库的 self-hosted workflow 现在会直接调用 `scripts/build-final-os-image.sh`，并上传 `out/artifacts/` 下的镜像产物。
 
-可通过两种方式补齐最终 `.img` 输入：
+可通过三种方式补齐最终 `.img` 输入：
 
 1. 在仓库 Variables 里设置：
    - `DIRETTA_SDK_PATH`
-   - `BASE_IMAGE_PATH` 或 `BOOT_FIRMWARE_DIR`
-2. 或手动触发 workflow 时填写：
+   - `BASE_IMAGE_PATH`
+   - `BOOT_FIRMWARE_DIR`
+   - `PREBUILT_IMAGE_ZIP`
+2. 手动触发 workflow 时填写：
    - `board_pack`
    - `payload_mode`
    - `base_image_path`
    - `boot_firmware_dir`
+   - `prebuilt_image_zip`
+3. 或直接使用 runner 默认约定：
+   - `~/Downloads/diretta_RaspberryPi5_149_16_includeRoonBridge.zip`
 
-如果提供 `BASE_IMAGE_PATH` 或 `BOOT_FIRMWARE_DIR`，workflow 会自动产出最终 `.img` 并上传 artifact。
+只要 runner 上存在 SDK 且满足以上任一镜像输入路径，workflow 就会自动产出最终 `.img` 并上传 artifact。
 
 ## Self-hosted runner 快速开始
 
