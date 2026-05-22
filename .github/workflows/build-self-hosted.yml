@@ -1,7 +1,24 @@
-name: Build on self-hosted runner
+name: Build appliance image on self-hosted runner
 
 on:
   workflow_dispatch:
+    inputs:
+      board_pack:
+        description: Board pack to build
+        required: false
+        default: raspberry-pi-5
+      payload_mode:
+        description: Payload mode
+        required: false
+        default: diretta-personal-use
+      base_image_path:
+        description: Absolute path to base image on the runner (optional)
+        required: false
+        default: ''
+      boot_firmware_dir:
+        description: Absolute path to boot firmware directory on the runner (optional)
+        required: false
+        default: ''
   push:
     branches: [ main ]
 
@@ -10,6 +27,8 @@ jobs:
     runs-on: [self-hosted, linux, x64, diretta-builder]
     env:
       DIRETTA_SDK_PATH: ${{ vars.DIRETTA_SDK_PATH != '' && vars.DIRETTA_SDK_PATH || format('{0}/audio/DirettaHostSDK_149', env.HOME) }}
+      BASE_IMAGE_PATH: ${{ github.event.inputs.base_image_path || vars.BASE_IMAGE_PATH }}
+      BOOT_FIRMWARE_DIR: ${{ github.event.inputs.boot_firmware_dir || vars.BOOT_FIRMWARE_DIR }}
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -20,11 +39,25 @@ jobs:
           test -d "${DIRETTA_SDK_PATH}/Host"
           test -d "${DIRETTA_SDK_PATH}/lib"
 
-      - name: Show environment
+      - name: Install image build dependencies
         run: |
-          uname -a
-          git --version
-          make info
+          sudo apt-get update
+          sudo apt-get install -y dosfstools e2fsprogs mount parted rsync util-linux
 
-      - name: Build renderer
-        run: make
+      - name: Build appliance image
+        run: |
+          chmod +x scripts/build-appliance-image.sh
+          ARGS=(--board-pack "${{ github.event.inputs.board_pack || 'raspberry-pi-5' }}" --payload-mode "${{ github.event.inputs.payload_mode || 'diretta-personal-use' }}")
+          if [ -n "${BASE_IMAGE_PATH}" ]; then
+            ARGS+=(--base-image "${BASE_IMAGE_PATH}")
+          fi
+          if [ -n "${BOOT_FIRMWARE_DIR}" ]; then
+            ARGS+=(--boot-firmware-dir "${BOOT_FIRMWARE_DIR}")
+          fi
+          DIRETTA_SDK_PATH="${DIRETTA_SDK_PATH}" ./scripts/build-appliance-image.sh "${ARGS[@]}"
+
+      - name: Upload appliance artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: appliance-image-artifacts
+          path: out/artifacts/*

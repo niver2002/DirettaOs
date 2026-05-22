@@ -74,6 +74,23 @@ DIRETTA_SDK_PATH=$HOME/audio/DirettaHostSDK_149 \
 ```
 
 
+### GitHub Actions 自动构建最终镜像
+
+仓库的 self-hosted workflow 现在会直接调用 `scripts/build-appliance-image.sh`，并上传 `out/artifacts/` 下的镜像产物。
+
+可通过两种方式补齐最终 `.img` 输入：
+
+1. 在仓库 Variables 里设置：
+   - `DIRETTA_SDK_PATH`
+   - `BASE_IMAGE_PATH` 或 `BOOT_FIRMWARE_DIR`
+2. 或手动触发 workflow 时填写：
+   - `board_pack`
+   - `payload_mode`
+   - `base_image_path`
+   - `boot_firmware_dir`
+
+如果提供 `BASE_IMAGE_PATH` 或 `BOOT_FIRMWARE_DIR`，workflow 会自动产出最终 `.img` 并上传 artifact。
+
 ## Self-hosted runner 快速开始
 
 ### 一键脚本
