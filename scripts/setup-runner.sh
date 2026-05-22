@@ -54,20 +54,21 @@ if [ ! -d "$SDK_DIR/lib" ] || [ ! -d "$SDK_DIR/Host" ]; then
   fi
 fi
 
-echo
-read -r -p "Have you already placed DirettaHostSDK_149 under ${SDK_DIR}? [y/N] " HAVE_SDK
-if [[ ! "$HAVE_SDK" =~ ^[Yy]$ ]]; then
-  warn "Runner setup can complete, but repository builds will fail until the SDK exists at ${SDK_DIR} or DIRETTA_SDK_PATH is set."
-else
-  if [ ! -d "$SDK_DIR/lib" ] || [ ! -d "$SDK_DIR/Host" ]; then
-    error "Expected SDK layout not found at ${SDK_DIR}"
-    exit 1
-  fi
+if [ -d "$SDK_DIR/lib" ] && [ -d "$SDK_DIR/Host" ]; then
   success "Detected SDK at ${SDK_DIR}"
+else
+  warn "SDK layout not found at ${SDK_DIR}. Builds will fail until DIRETTA_SDK_PATH points to a valid SDK."
 fi
 
+if [ -z "${RUNNER_TOKEN:-}" ] && command -v gh >/dev/null 2>&1; then
+  if gh auth status >/dev/null 2>&1; then
+    info "Requesting runner registration token via GitHub CLI"
+    RUNNER_TOKEN="$(gh api --method POST "repos/${GH_REPO}/actions/runners/registration-token" --jq .token 2>/dev/null || true)"
+  fi
+fi
+
+echo
 if [ -z "${RUNNER_TOKEN:-}" ]; then
-  echo
   echo "Get a runner registration token from:"
   echo "  https://github.com/${GH_REPO}/settings/actions/runners/new"
   echo

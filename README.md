@@ -32,6 +32,34 @@ DirettaOs/
 
 ## Self-hosted runner 快速开始
 
+### 一键脚本
+
+如果云电脑已经装好 `git` / `tar` / `bash`，并且同步盘里有 SDK 归档，可以直接运行：
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/niver2002/DirettaOs/main/scripts/bootstrap-cloud-runner.sh -o /tmp/bootstrap-cloud-runner.sh
+chmod +x /tmp/bootstrap-cloud-runner.sh
+/tmp/bootstrap-cloud-runner.sh
+```
+
+默认约定：
+- 仓库克隆到：`$HOME/work/DirettaOs`
+- 同步盘 SDK 归档：`$HOME/syncdisk/diretta-assets/DirettaHostSDK_149_6.tar.zst`
+- SDK 解压到：`$HOME/audio/DirettaHostSDK_149`
+- runner 安装到：`$HOME/actions-runner-direttaos`
+
+如需覆盖路径，可先导出环境变量：
+
+```bash
+export SYNC_ASSET_DIR=/path/to/diretta-assets
+export SDK_ARCHIVE=/path/to/DirettaHostSDK_149_6.tar.zst
+export REPO_DIR=$HOME/work/DirettaOs
+export RUNNER_DIR=$HOME/actions-runner-direttaos
+/tmp/bootstrap-cloud-runner.sh
+```
+
+### 手动方式
+
 1. 在 Linux x86_64 构建机上 clone 本仓库
 2. 准备 SDK 归档或已解压目录：
    - 默认解压目标：`$HOME/audio/DirettaHostSDK_149`
