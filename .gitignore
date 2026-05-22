@@ -1,0 +1,28 @@
+# build outputs
+out/
+obj/
+bin/
+*.o
+*.d
+
+# local caches
+ffmpeg-headers/
+.ffmpeg-version
+vendor/
+_work/
+runner.log
+
+# python caches
+__pycache__/
+*.pyc
+
+# editor files
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS files
+.DS_Store
+Thumbs.db

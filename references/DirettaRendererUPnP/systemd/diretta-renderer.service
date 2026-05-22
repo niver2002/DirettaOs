@@ -1,0 +1,63 @@
+[Unit]
+Description=Diretta UPnP Renderer
+Documentation=https://github.com/cometdom/DirettaRendererUPnP
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=root
+WorkingDirectory=/opt/diretta-renderer-upnp
+EnvironmentFile=-/etc/default/diretta-renderer
+ExecStart=/opt/diretta-renderer-upnp/start-renderer.sh
+
+# Restart policy
+Restart=on-failure
+RestartSec=5
+
+# Logging
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=diretta-renderer
+
+# --- Capabilities ---
+# CAP_NET_RAW/CAP_NET_ADMIN: needed for Diretta raw sockets
+# CAP_SYS_NICE: needed for real-time thread priority (SCHED_FIFO)
+AmbientCapabilities=CAP_NET_RAW CAP_NET_ADMIN CAP_SYS_NICE
+CapabilityBoundingSet=CAP_NET_RAW CAP_NET_ADMIN CAP_SYS_NICE
+
+# --- Filesystem isolation ---
+ProtectSystem=strict
+ProtectHome=true
+PrivateTmp=true
+ReadOnlyPaths=/opt/diretta-renderer-upnp
+ReadWritePaths=/var/log
+
+# --- Device and kernel isolation ---
+PrivateDevices=true
+#ProtectKernelTunables=true -> removed so that the NIC IRQ affinity can be changed
+ProtectKernelModules=true
+ProtectKernelLogs=true
+ProtectControlGroups=true
+ProtectClock=true
+ProtectHostname=true
+
+# --- Misc hardening ---
+LockPersonality=true
+MemoryDenyWriteExecute=true
+RestrictRealtime=false
+RestrictSUIDSGID=true
+RemoveIPC=true
+RestrictNamespaces=true
+RestrictAddressFamilies=AF_INET AF_INET6 AF_NETLINK AF_UNIX AF_PACKET
+
+# --- System call filtering ---
+SystemCallArchitectures=native
+SystemCallFilter=~@mount @keyring @debug @module @swap @reboot @obsolete
+
+# --- Performance ---
+# Nice and IOScheduling are now configurable via /etc/default/diretta-renderer
+# (NICE_LEVEL, IO_SCHED_CLASS, IO_SCHED_PRIORITY) and applied by start-renderer.sh
+
+[Install]
+WantedBy=multi-user.target

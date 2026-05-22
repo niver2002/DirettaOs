@@ -1,0 +1,107 @@
+{
+  "product_name": "Diretta Appliance Onboarding",
+  "service_name": "diretta-onboarding",
+  "config_path": "/etc/diretta-appliance/onboarding.env",
+  "config_type": "shell_vars",
+  "groups": [
+    {
+      "name": "Welcome",
+      "collapsed": false,
+      "settings": [
+        {
+          "key": "DEVICE_NAME",
+          "type": "text",
+          "label": "Device Name",
+          "description": "Friendly appliance name shown in onboarding and later management UI.",
+          "default": "Diretta Appliance"
+        },
+        {
+          "key": "BOARD_PACK",
+          "type": "select",
+          "label": "Board Pack",
+          "description": "Qualified hardware profile used to apply safe defaults.",
+          "default": "raspberry-pi-5",
+          "options": [
+            {"value": "raspberry-pi-5", "label": "Raspberry Pi 5"},
+            {"value": "cm5-reference", "label": "CM5 Reference"},
+            {"value": "raspberry-pi-4", "label": "Raspberry Pi 4"},
+            {"value": "cm4-reference", "label": "CM4 Reference"}
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Network Setup",
+      "collapsed": false,
+      "settings": [
+        {
+          "key": "NETWORK_MODE",
+          "type": "select",
+          "label": "Primary Setup Path",
+          "description": "Select the first network path used during onboarding.",
+          "default": "ethernet",
+          "options": [
+            {"value": "ethernet", "label": "Ethernet"},
+            {"value": "wifi", "label": "Wi-Fi"},
+            {"value": "ap", "label": "Temporary Access Point"}
+          ]
+        },
+        {
+          "key": "WIFI_SSID",
+          "type": "text",
+          "label": "Wi-Fi SSID",
+          "description": "Optional Wi-Fi network name for first-boot configuration.",
+          "default": ""
+        },
+        {
+          "key": "WIFI_PASSPHRASE",
+          "type": "text",
+          "label": "Wi-Fi Passphrase",
+          "description": "Optional Wi-Fi passphrase. Placeholder only until backend validation is implemented.",
+          "default": ""
+        },
+        {
+          "key": "BLUETOOTH_MODE",
+          "type": "select",
+          "label": "Bluetooth Setup",
+          "description": "Controls whether Bluetooth-assisted onboarding is enabled.",
+          "default": "disabled",
+          "options": [
+            {"value": "disabled", "label": "Disabled"},
+            {"value": "guided", "label": "Guided pairing"}
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Audio Profile",
+      "collapsed": false,
+      "settings": [
+        {
+          "key": "TUNING_PRESET",
+          "type": "select",
+          "label": "Tuning Preset",
+          "description": "Choose the validated default profile for this device.",
+          "default": "safe-default",
+          "options": [
+            {"value": "safe-default", "label": "Safe Default"},
+            {"value": "performance", "label": "Performance"},
+            {"value": "lab", "label": "Lab / Experimental"}
+          ]
+        },
+        {
+          "key": "AUDIO_NETWORK_TOPOLOGY",
+          "type": "select",
+          "label": "Network Topology",
+          "description": "Select the intended renderer network topology for onboarding defaults.",
+          "default": "single-nic",
+          "options": [
+            {"value": "single-nic", "label": "Single NIC"},
+            {"value": "dual-nic", "label": "Dual NIC"},
+            {"value": "three-tier", "label": "3-tier / separated control+audio"}
+          ]
+        }
+      ]
+    }
+  ]
+}

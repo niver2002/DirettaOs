@@ -1,0 +1,37 @@
+name: Build on self-hosted runner
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [ main ]
+
+jobs:
+  build:
+    runs-on: [self-hosted, linux, x64, diretta-builder]
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Resolve SDK
+        run: |
+          mkdir -p "$HOME/audio"
+          if [ ! -d "$HOME/audio/DirettaHostSDK_149/Host" ] && [ -f "DirettaHostSDK_149_6.tar.zst" ]; then
+            tar --zstd -xf "DirettaHostSDK_149_6.tar.zst" -C "$HOME/audio"
+          fi
+          echo "DIRETTA_SDK_PATH=${DIRETTA_SDK_PATH:-$HOME/audio/DirettaHostSDK_149}" >> "$GITHUB_ENV"
+
+      - name: Verify SDK
+        run: |
+          echo "DIRETTA_SDK_PATH=${DIRETTA_SDK_PATH:-}"
+          test -n "${DIRETTA_SDK_PATH:-}"
+          test -d "${DIRETTA_SDK_PATH}/Host"
+          test -d "${DIRETTA_SDK_PATH}/lib"
+
+      - name: Show environment
+        run: |
+          uname -a
+          git --version
+          make info
+
+      - name: Build renderer
+        run: make

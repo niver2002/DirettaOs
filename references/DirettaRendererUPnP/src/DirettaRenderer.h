@@ -1,0 +1,113 @@
+/**
+ * @file DirettaRenderer.h
+ * @brief Simplified Diretta UPnP Renderer
+ *
+ * Refactored to use unified DirettaSync class.
+ * Connection and format management delegated to DirettaSync.
+ */
+
+#pragma once
+
+#include <memory>
+#include <string>
+#include <thread>
+#include <atomic>
+#include <mutex>
+#include <condition_variable>
+#include <chrono>
+#include <iostream>
+
+// Forward declarations
+class UPnPDevice;
+class AudioEngine;
+class DirettaSync;
+struct AudioFormat;
+
+class DirettaRenderer {
+public:
+    struct Config {
+        std::string name = "Diretta UPnP Renderer";
+        int port = 49152;
+        std::string uuid;
+        bool gaplessEnabled = true;
+        int targetIndex = -1;  // -1 = interactive, >= 0 = specific
+        std::string networkInterface;  // Empty = auto-detect
+
+        // Advanced Diretta SDK settings (-1 = use default)
+        int threadMode = -1;       // SDK THRED_MODE bitmask (default: 1 = CRITICAL)
+        int cycleTime = -1;        // Cycle time in µs (default: 2620, auto-calculated)
+        int infoCycle = -1;        // Info packet cycle in µs (default: 100000 = 100ms)
+        int cycleMinTime = -1;     // Min cycle time in µs (default: unused, random mode only)
+        std::string transferMode;  // Transfer mode: auto|varmax|varauto|fixauto|random
+        int mtu = -1;             // MTU override in bytes (default: auto-detect)
+        int targetProfileLimitTime = -1;  // 0=SelfProfile (stable, default), >0=TargetProfile limit in µs (experimental)
+
+        // CPU affinity (empty = no pinning, default)
+        // Accept one or more cores (comma-separated), e.g. "6" or "6,7,8"
+        std::string cpuAudio;     // Cores for DirettaSync worker thread (critical hot path)
+        std::string cpuDecode;    // Cores for DirettaRenderer audio thread (decode)
+        std::string cpuOther;     // Cores for other threads (UPnP, position)
+
+        // Buffer configuration (-1 = use defaults)
+        float pcmBufferSeconds = -1.0f;        // Default 0.5s
+        float pcmRemoteBufferSeconds = -1.0f;  // Default 1.0s
+        float dsdBufferSeconds = -1.0f;        // Default 0.8s
+        int pcmPrefillMs = -1;                 // Default 80ms
+        int pcmRemotePrefillMs = -1;           // Default 150ms
+        int dsdPrefillMs = -1;                 // Default 200ms
+
+        Config();
+    };
+
+    DirettaRenderer(const Config& config);
+    ~DirettaRenderer();
+
+    bool start(std::atomic<bool>* stopSignal = nullptr);
+    void stop();
+
+    bool isRunning() const { return m_running; }
+
+    /** @brief Dump runtime statistics (called by SIGUSR1 handler) */
+    void dumpStats() const;
+
+private:
+    // Thread functions
+    void audioThreadFunc();
+    void upnpThreadFunc();
+    void positionThreadFunc();
+
+    // Helper to wait for audio callback completion
+    void waitForCallbackComplete();
+
+    // Configuration
+    Config m_config;
+
+    // Components
+    std::unique_ptr<UPnPDevice> m_upnp;
+    std::unique_ptr<AudioEngine> m_audioEngine;
+    std::unique_ptr<DirettaSync> m_direttaSync;
+
+    // Threads
+    std::thread m_audioThread;
+    std::thread m_upnpThread;
+    std::thread m_positionThread;
+
+    // State
+    std::atomic<bool> m_running{false};
+    std::mutex m_mutex;
+
+    // Current track info
+    std::string m_currentURI;
+    std::string m_currentMetadata;
+
+    // Callback synchronization (lock-free for hot path)
+    std::atomic<bool> m_callbackRunning{false};
+    std::atomic<bool> m_shutdownRequested{false};
+
+    // DAC stabilization timing
+    std::chrono::steady_clock::time_point m_lastStopTime;
+
+    // Auto-release: free Diretta target after idle timeout for coexistence
+    std::atomic<bool> m_idleTimerActive{false};
+    std::atomic<bool> m_direttaReleased{false};
+};

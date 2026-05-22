@@ -1,0 +1,19 @@
+[Unit]
+Description=Diretta Appliance Onboarding Service
+After=network.target
+
+[Service]
+Type=simple
+ExecStart=/usr/bin/python3 /opt/diretta-renderer-upnp/image/onboarding/onboarding_webui.py \
+    --profile /opt/diretta-renderer-upnp/image/onboarding/profiles/diretta_appliance_onboarding.json \
+    --port 8088
+Restart=on-failure
+RestartSec=5
+
+ProtectSystem=strict
+ReadWritePaths=/etc/diretta-appliance
+ProtectHome=true
+PrivateTmp=true
+
+[Install]
+WantedBy=multi-user.target

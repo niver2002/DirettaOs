@@ -1,0 +1,61 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>${product_name} - Onboarding</title>
+    <link rel="stylesheet" href="/static/onboarding.css">
+</head>
+<body>
+    <div class="page-shell">
+        <div class="hero-card">
+            <header>
+                <div class="eyebrow">First boot setup</div>
+                <h1>${product_name}</h1>
+                <p class="subtitle">State: <strong>${state_value}</strong></p>
+            </header>
+
+            ${flash_html}
+
+            <section class="intro">
+                <p>
+                    This onboarding service prepares the appliance for operational use.
+                    It is intentionally separate from the ongoing renderer configuration UI.
+                </p>
+            </section>
+
+            <form method="POST" action="/save">
+                ${groups_html}
+
+                <div class="actions primary-actions">
+                    <button type="submit" class="btn btn-primary">Save onboarding settings</button>
+                </div>
+            </form>
+
+            <div class="actions secondary-actions">
+                <form method="POST" action="/complete">
+                    <button type="submit" class="btn btn-secondary">Mark operational</button>
+                </form>
+                <form method="POST" action="/reset">
+                    <button type="submit" class="btn btn-danger">Reset onboarding state</button>
+                </form>
+            </div>
+
+            <footer>
+                diretta-appliance onboarding scaffold
+            </footer>
+        </div>
+    </div>
+
+    <script>
+        document.querySelectorAll('.group-header').forEach(function(header) {
+            header.addEventListener('click', function() {
+                var body = this.nextElementSibling;
+                var toggle = this.querySelector('.toggle');
+                body.classList.toggle('collapsed');
+                toggle.classList.toggle('open');
+            });
+        });
+    </script>
+</body>
+</html>

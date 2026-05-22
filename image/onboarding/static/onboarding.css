@@ -1,0 +1,236 @@
+* {
+    box-sizing: border-box;
+    margin: 0;
+    padding: 0;
+}
+
+:root {
+    color-scheme: dark;
+    --bg: #07111f;
+    --card: rgba(13, 21, 35, 0.92);
+    --muted: #8ea3bf;
+    --text: #ecf3fb;
+    --line: rgba(255, 255, 255, 0.08);
+    --accent: #67b7ff;
+    --accent-2: #7c5cff;
+    --danger: #ff6a75;
+    --success-bg: rgba(45, 125, 85, 0.18);
+    --success-border: rgba(88, 216, 151, 0.35);
+    --error-bg: rgba(147, 32, 44, 0.18);
+    --error-border: rgba(255, 120, 130, 0.35);
+}
+
+body {
+    font-family: Inter, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    background:
+        radial-gradient(circle at top left, rgba(124, 92, 255, 0.18), transparent 35%),
+        radial-gradient(circle at top right, rgba(103, 183, 255, 0.16), transparent 30%),
+        linear-gradient(180deg, #08121f 0%, #050b14 100%);
+    color: var(--text);
+    min-height: 100vh;
+}
+
+.page-shell {
+    width: 100%;
+    padding: 2.5rem 1rem;
+}
+
+.hero-card {
+    max-width: 880px;
+    margin: 0 auto;
+    background: var(--card);
+    border: 1px solid var(--line);
+    border-radius: 22px;
+    padding: 2rem;
+    box-shadow: 0 22px 70px rgba(0, 0, 0, 0.35);
+    backdrop-filter: blur(14px);
+}
+
+header {
+    margin-bottom: 1.5rem;
+}
+
+.eyebrow {
+    font-size: 0.85rem;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--accent);
+    margin-bottom: 0.75rem;
+}
+
+header h1 {
+    font-size: clamp(1.9rem, 4vw, 2.8rem);
+    margin-bottom: 0.45rem;
+}
+
+.subtitle {
+    color: var(--muted);
+    font-size: 0.98rem;
+}
+
+.intro {
+    margin-bottom: 1.5rem;
+    color: var(--muted);
+    font-size: 0.95rem;
+}
+
+.flash {
+    padding: 0.85rem 1rem;
+    border-radius: 12px;
+    margin-bottom: 1rem;
+    font-size: 0.95rem;
+}
+
+.flash.success {
+    background: var(--success-bg);
+    border: 1px solid var(--success-border);
+}
+
+.flash.error {
+    background: var(--error-bg);
+    border: 1px solid var(--error-border);
+}
+
+.group {
+    background: rgba(255, 255, 255, 0.02);
+    border: 1px solid var(--line);
+    border-radius: 16px;
+    margin-bottom: 1rem;
+    overflow: hidden;
+}
+
+.group-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 1rem 1.1rem;
+    cursor: pointer;
+}
+
+.group-header h2 {
+    font-size: 1rem;
+    font-weight: 600;
+}
+
+.group-header .toggle {
+    color: var(--muted);
+    transition: transform 0.2s ease;
+}
+
+.group-header .toggle.open {
+    transform: rotate(90deg);
+}
+
+.group-body {
+    padding: 0 1.1rem 1.1rem;
+}
+
+.group-body.collapsed {
+    display: none;
+}
+
+.setting {
+    padding: 0.9rem 0;
+    border-top: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+.setting:first-child {
+    border-top: none;
+}
+
+.setting label {
+    display: block;
+    font-size: 0.95rem;
+    font-weight: 600;
+    margin-bottom: 0.3rem;
+}
+
+.setting .description {
+    color: var(--muted);
+    font-size: 0.82rem;
+    margin-bottom: 0.55rem;
+}
+
+.setting input[type="text"],
+.setting input[type="number"],
+.setting select {
+    width: 100%;
+    padding: 0.72rem 0.8rem;
+    border-radius: 10px;
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    background: rgba(255, 255, 255, 0.04);
+    color: var(--text);
+    font-size: 0.95rem;
+}
+
+.setting input:focus,
+.setting select:focus {
+    outline: none;
+    border-color: rgba(103, 183, 255, 0.7);
+    box-shadow: 0 0 0 3px rgba(103, 183, 255, 0.14);
+}
+
+.actions {
+    display: flex;
+    gap: 0.85rem;
+    flex-wrap: wrap;
+}
+
+.primary-actions {
+    margin-top: 1.5rem;
+}
+
+.secondary-actions {
+    margin-top: 1rem;
+}
+
+.btn {
+    border: none;
+    border-radius: 12px;
+    padding: 0.88rem 1.2rem;
+    font-size: 0.95rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: transform 0.15s ease, opacity 0.15s ease;
+}
+
+.btn:hover {
+    transform: translateY(-1px);
+}
+
+.btn-primary {
+    background: linear-gradient(135deg, var(--accent), var(--accent-2));
+    color: white;
+}
+
+.btn-secondary {
+    background: rgba(255, 255, 255, 0.08);
+    color: var(--text);
+}
+
+.btn-danger {
+    background: rgba(255, 106, 117, 0.18);
+    color: #ffd5d9;
+    border: 1px solid rgba(255, 106, 117, 0.26);
+}
+
+footer {
+    margin-top: 1.75rem;
+    color: var(--muted);
+    font-size: 0.8rem;
+}
+
+@media (max-width: 640px) {
+    .hero-card {
+        padding: 1.2rem;
+        border-radius: 18px;
+    }
+
+    .actions {
+        flex-direction: column;
+    }
+
+    .btn {
+        width: 100%;
+    }
+}
