@@ -19,6 +19,10 @@ on:
         description: Absolute path to boot firmware directory on the runner (optional)
         required: false
         default: ''
+      prebuilt_image_zip:
+        description: Absolute path to official Pi prebuilt image zip on the runner (optional)
+        required: false
+        default: ''
   push:
     branches: [ main ]
 
@@ -29,6 +33,7 @@ jobs:
       DIRETTA_SDK_PATH: ${{ vars.DIRETTA_SDK_PATH != '' && vars.DIRETTA_SDK_PATH || format('{0}/audio/DirettaHostSDK_149', env.HOME) }}
       BASE_IMAGE_PATH: ${{ github.event.inputs.base_image_path || vars.BASE_IMAGE_PATH }}
       BOOT_FIRMWARE_DIR: ${{ github.event.inputs.boot_firmware_dir || vars.BOOT_FIRMWARE_DIR }}
+      PREBUILT_IMAGE_ZIP: ${{ github.event.inputs.prebuilt_image_zip || vars.PREBUILT_IMAGE_ZIP || format('{0}/Downloads/diretta_RaspberryPi5_149_16_includeRoonBridge.zip', env.HOME) }}
       BOARD_PACK: ${{ github.event.inputs.board_pack || 'raspberry-pi-5' }}
       PAYLOAD_MODE: ${{ github.event.inputs.payload_mode || 'diretta-personal-use' }}
     steps:
@@ -52,6 +57,7 @@ jobs:
           DIRETTA_SDK_PATH="${DIRETTA_SDK_PATH}" \
           BASE_IMAGE_PATH="${BASE_IMAGE_PATH}" \
           BOOT_FIRMWARE_DIR="${BOOT_FIRMWARE_DIR}" \
+          PREBUILT_IMAGE_ZIP="${PREBUILT_IMAGE_ZIP}" \
           BOARD_PACK="${BOARD_PACK}" \
           PAYLOAD_MODE="${PAYLOAD_MODE}" \
           ./scripts/build-final-os-image.sh

@@ -16,6 +16,7 @@ ARCH_NAME="${ARCH_NAME:-}"
 DIRETTA_SDK_PATH="${DIRETTA_SDK_PATH:-}"
 BASE_IMAGE_PATH="${BASE_IMAGE_PATH:-}"
 BOOT_FIRMWARE_DIR="${BOOT_FIRMWARE_DIR:-}"
+PREBUILT_IMAGE_ZIP="${PREBUILT_IMAGE_ZIP:-}"
 BOOT_SIZE_MB="${BOOT_SIZE_MB:-256}"
 ROOT_SIZE_MB="${ROOT_SIZE_MB:-4096}"
 FINAL_IMAGE_NAME=""
@@ -48,6 +49,7 @@ Options:
   --sdk-path <path>          Diretta SDK path (or use DIRETTA_SDK_PATH env)
   --base-image <path>        Existing .img base image to mutate into final OS image
   --boot-firmware-dir <dir>  Firmware/boot files to seed a fresh boot partition image
+  --prebuilt-image-zip <file>  Official Pi image zip containing a .img to use as base image
   --boot-size-mb <num>       Boot partition size for fresh image mode (default: 256)
   --root-size-mb <num>       Root partition size for fresh image mode (default: 4096)
   --final-image-name <name>  Override final .img artifact name
@@ -179,6 +181,25 @@ copy_into_mount() {
   fi
 }
 
+extract_base_image_from_zip() {
+  local zip_path="$1"
+  local output_path="$2"
+
+  need_cmd python3
+  python3 - "$zip_path" "$output_path" <<'PY'
+import sys, zipfile, shutil
+zip_path, output_path = sys.argv[1], sys.argv[2]
+with zipfile.ZipFile(zip_path) as zf:
+    img_members = [n for n in zf.namelist() if n.lower().endswith('.img')]
+    if not img_members:
+        raise SystemExit('No .img found in zip archive')
+    member = img_members[0]
+    with zf.open(member) as src, open(output_path, 'wb') as dst:
+        shutil.copyfileobj(src, dst)
+print(output_path)
+PY
+}
+
 cleanup_loop_mounts() {
   local mount_root="$1"
   local loopdev="$2"
@@ -238,6 +259,10 @@ while [ $# -gt 0 ]; do
       BOOT_FIRMWARE_DIR="$2"
       shift 2
       ;;
+    --prebuilt-image-zip)
+      PREBUILT_IMAGE_ZIP="$2"
+      shift 2
+      ;;
     --boot-size-mb)
       BOOT_SIZE_MB="$2"
       shift 2
@@ -283,12 +308,20 @@ if [ -n "$BASE_IMAGE_PATH" ] && [ ! -f "$BASE_IMAGE_PATH" ]; then
   fail "Base image not found: $BASE_IMAGE_PATH"
 fi
 
+if [ -n "$PREBUILT_IMAGE_ZIP" ] && [ ! -f "$PREBUILT_IMAGE_ZIP" ]; then
+  fail "Prebuilt image zip not found: $PREBUILT_IMAGE_ZIP"
+fi
+
 if [ -n "$BOOT_FIRMWARE_DIR" ] && [ ! -d "$BOOT_FIRMWARE_DIR" ]; then
   fail "Boot firmware directory not found: $BOOT_FIRMWARE_DIR"
 fi
 
-if [ -z "$BASE_IMAGE_PATH" ] && [ -z "$BOOT_FIRMWARE_DIR" ]; then
-  warn "No base image or boot firmware directory supplied; raw .img build will be skipped"
+if [ -n "$PREBUILT_IMAGE_ZIP" ] && [ -z "$BASE_IMAGE_PATH" ]; then
+  BASE_IMAGE_PATH="$STAGE_ROOT/prebuilt-base.img"
+fi
+
+if [ -z "$BASE_IMAGE_PATH" ] && [ -z "$BOOT_FIRMWARE_DIR" ] && [ -z "$PREBUILT_IMAGE_ZIP" ]; then
+  warn "No base image, prebuilt image zip, or boot firmware directory supplied; raw .img build will be skipped"
 fi
 
 STAGE_ROOT="$OUTPUT_DIR/stage/$IMAGE_ID"
@@ -316,6 +349,10 @@ mkdir -p \
   "$BOOT_DIR" \
   "$ROOT_PART_DIR" \
   "$MOUNT_ROOT"
+
+if [ -n "$PREBUILT_IMAGE_ZIP" ] && [ -z "$BASE_IMAGE_PATH" ]; then
+  BASE_IMAGE_PATH="$STAGE_ROOT/prebuilt-base.img"
+fi
 
 log "Preparing base appliance layout for $BOARD_PACK"
 copy_tree "$IMAGE_DIR/common/presets" "$ROOTFS_DIR/usr/share/diretta-appliance/presets"
@@ -470,7 +507,12 @@ tar -C "$IMAGE_WORK_DIR" -czf "$FINAL_IMAGE_ARCHIVE" .
 sha256sum "$FINAL_IMAGE_ARCHIVE" > "$FINAL_IMAGE_ARCHIVE.sha256"
 
 FINAL_RAW_IMAGE=""
-if [ -n "$BASE_IMAGE_PATH" ] || [ -n "$BOOT_FIRMWARE_DIR" ]; then
+if [ -n "$BASE_IMAGE_PATH" ] || [ -n "$BOOT_FIRMWARE_DIR" ] || [ -n "$PREBUILT_IMAGE_ZIP" ]; then
+  if [ -n "$PREBUILT_IMAGE_ZIP" ] && [ ! -f "$BASE_IMAGE_PATH" ]; then
+    log "Extracting base image from $PREBUILT_IMAGE_ZIP"
+    extract_base_image_from_zip "$PREBUILT_IMAGE_ZIP" "$BASE_IMAGE_PATH"
+  fi
+
   if [ -n "$BASE_IMAGE_PATH" ]; then
     log "Creating final raw image from base image"
     mutate_base_image "$BASE_IMAGE_PATH" "$FINAL_IMAGE_PATH" "$BOOT_DIR" "$ROOT_PART_DIR" "$MOUNT_ROOT"

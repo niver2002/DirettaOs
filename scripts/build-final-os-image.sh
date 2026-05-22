@@ -7,6 +7,7 @@ GH_REPO="${GH_REPO:-niver2002/DirettaOs}"
 DIRETTA_SDK_PATH="${DIRETTA_SDK_PATH:-$HOME/audio/DirettaHostSDK_149}"
 BASE_IMAGE_PATH="${BASE_IMAGE_PATH:-}"
 BOOT_FIRMWARE_DIR="${BOOT_FIRMWARE_DIR:-}"
+PREBUILT_IMAGE_ZIP="${PREBUILT_IMAGE_ZIP:-$HOME/Downloads/diretta_RaspberryPi5_149_16_includeRoonBridge.zip}"
 BOARD_PACK="${BOARD_PACK:-raspberry-pi-5}"
 PAYLOAD_MODE="${PAYLOAD_MODE:-diretta-personal-use}"
 
@@ -37,6 +38,9 @@ if [ -n "$BASE_IMAGE_PATH" ]; then
 fi
 if [ -n "$BOOT_FIRMWARE_DIR" ]; then
   ARGS+=(--boot-firmware-dir "$BOOT_FIRMWARE_DIR")
+fi
+if [ -n "$PREBUILT_IMAGE_ZIP" ] && [ -f "$PREBUILT_IMAGE_ZIP" ]; then
+  ARGS+=(--prebuilt-image-zip "$PREBUILT_IMAGE_ZIP")
 fi
 
 info "Running appliance image build"
