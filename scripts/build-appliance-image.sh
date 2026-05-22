@@ -132,6 +132,9 @@ STAGE_ROOT="$OUTPUT_DIR/stage/$IMAGE_ID"
 ROOTFS_DIR="$STAGE_ROOT/rootfs"
 ARTIFACT_DIR="$OUTPUT_DIR/artifacts"
 METADATA_DIR="$STAGE_ROOT/metadata"
+IMAGE_WORK_DIR="$STAGE_ROOT/image"
+BOOT_DIR="$IMAGE_WORK_DIR/boot"
+ROOT_PART_DIR="$IMAGE_WORK_DIR/rootfs"
 PAYLOAD_INSTALL_PATH="/opt/diretta-renderer-upnp"
 APPLIANCE_ROOT="$ROOTFS_DIR/opt/diretta-appliance"
 PAYLOAD_ROOT="$ROOTFS_DIR${PAYLOAD_INSTALL_PATH}"
@@ -144,7 +147,9 @@ mkdir -p \
   "$ROOTFS_DIR/usr/share/diretta-appliance" \
   "$APPLIANCE_ROOT" \
   "$ARTIFACT_DIR" \
-  "$METADATA_DIR"
+  "$METADATA_DIR" \
+  "$BOOT_DIR" \
+  "$ROOT_PART_DIR"
 
 log "Preparing base appliance layout for $BOARD_PACK"
 copy_tree "$IMAGE_DIR/common/presets" "$ROOTFS_DIR/usr/share/diretta-appliance/presets"
@@ -235,8 +240,51 @@ config_path=/etc/default/diretta-renderer
 install_path=${PAYLOAD_INSTALL_PATH}
 EOF
 
+cp "$ROOTFS_DIR/etc/diretta-appliance/image.env" "$METADATA_DIR/image.env"
+cp "$ROOTFS_DIR/etc/diretta-appliance/payload.env" "$METADATA_DIR/payload.env"
+cp "$IMAGE_DIR/boards/$BOARD_PACK/manifest.env" "$METADATA_DIR/board-pack.env"
+
+cat > "$BOOT_DIR/board-pack.env" <<EOF
+board_pack=${BOARD_PACK}
+board_family=$(grep '^board_family=' "$IMAGE_DIR/boards/$BOARD_PACK/manifest.env" | cut -d= -f2-)
+channel=${CHANNEL}
+version=${VERSION}
+image_id=${IMAGE_ID}
+arch_name=${ARCH_NAME}
+payload_mode=${PAYLOAD_MODE}
+EOF
+
+cat > "$BOOT_DIR/cmdline.txt" <<EOF
+console=serial0,115200 console=tty1 root=LABEL=DIRETTA_ROOT rootfstype=ext4 fsck.repair=yes rootwait quiet splash
+EOF
+
+cat > "$BOOT_DIR/config.txt" <<EOF
+arm_64bit=1
+enable_uart=1
+EOF
+
+copy_tree "$ROOTFS_DIR" "$ROOT_PART_DIR"
+
+echo 'diretta-appliance' > "$ROOT_PART_DIR/etc/hostname"
+mkdir -p "$ROOT_PART_DIR/etc"
+cat > "$ROOT_PART_DIR/etc/fstab" <<EOF
+LABEL=DIRETTA_BOOT  /boot  vfat  defaults  0  2
+LABEL=DIRETTA_ROOT  /      ext4  defaults,noatime  0  1
+EOF
+
 ROOTFS_ARCHIVE="$ARTIFACT_DIR/${IMAGE_ID}-rootfs.tar.gz"
 MANIFEST_ARCHIVE="$ARTIFACT_DIR/${IMAGE_ID}-metadata.tar.gz"
+BOOT_ARCHIVE="$ARTIFACT_DIR/${IMAGE_ID}-boot.tar.gz"
+ROOT_PART_ARCHIVE="$ARTIFACT_DIR/${IMAGE_ID}-rootfs-partition.tar.gz"
+FINAL_IMAGE_ARCHIVE="$ARTIFACT_DIR/${IMAGE_ID}-os-image.tar.gz"
+
+log "Packaging boot artifact"
+tar -C "$BOOT_DIR" -czf "$BOOT_ARCHIVE" .
+sha256sum "$BOOT_ARCHIVE" > "$BOOT_ARCHIVE.sha256"
+
+log "Packaging rootfs partition artifact"
+tar -C "$ROOT_PART_DIR" -czf "$ROOT_PART_ARCHIVE" .
+sha256sum "$ROOT_PART_ARCHIVE" > "$ROOT_PART_ARCHIVE.sha256"
 
 log "Packaging rootfs artifact"
 tar -C "$ROOTFS_DIR" -czf "$ROOTFS_ARCHIVE" .
@@ -245,6 +293,12 @@ sha256sum "$ROOTFS_ARCHIVE" > "$ROOTFS_ARCHIVE.sha256"
 tar -C "$METADATA_DIR" -czf "$MANIFEST_ARCHIVE" .
 sha256sum "$MANIFEST_ARCHIVE" > "$MANIFEST_ARCHIVE.sha256"
 
+tar -C "$IMAGE_WORK_DIR" -czf "$FINAL_IMAGE_ARCHIVE" .
+sha256sum "$FINAL_IMAGE_ARCHIVE" > "$FINAL_IMAGE_ARCHIVE.sha256"
+
 log "Build complete"
+printf 'Boot artifact: %s\n' "$BOOT_ARCHIVE"
+printf 'Root partition artifact: %s\n' "$ROOT_PART_ARCHIVE"
 printf 'Rootfs artifact: %s\n' "$ROOTFS_ARCHIVE"
 printf 'Metadata artifact: %s\n' "$MANIFEST_ARCHIVE"
+printf 'Final image artifact: %s\n' "$FINAL_IMAGE_ARCHIVE"

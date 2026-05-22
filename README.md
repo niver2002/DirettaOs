@@ -42,11 +42,15 @@ DIRETTA_SDK_PATH=$HOME/audio/DirettaHostSDK_149 \
 
 默认行为：
 - 生成 board pack 对应的 appliance rootfs stage
+- 生成 boot 分区内容目录与 rootfs 分区内容目录
 - 在 payload 模式下自动构建 `references/DirettaRendererUPnP`
 - 将 renderer、systemd unit、web UI、onboarding、preset、manifest 一起打包到 `out/artifacts/`
 - 输出：
+  - `*-boot.tar.gz`
+  - `*-rootfs-partition.tar.gz`
   - `*-rootfs.tar.gz`
   - `*-metadata.tar.gz`
+  - `*-os-image.tar.gz`
   - 各自的 `sha256`
 
 如果只想构建不含 Diretta payload 的平台基础镜像：
@@ -55,7 +59,7 @@ DIRETTA_SDK_PATH=$HOME/audio/DirettaHostSDK_149 \
 ./scripts/build-appliance-image.sh --board-pack raspberry-pi-5 --payload-mode platform-only
 ```
 
-当前脚本面向 **自动化 rootfs/stage 产物**，不是最终可直接刷写的完整 block image；它先把镜像装配链和元数据链打通，后续再继续补 boot 分区、分区表、刷写镜像和更新签名流程。
+当前脚本现在会产出 **可自动装配的最终镜像内容包**：boot 分区内容、rootfs 分区内容、完整 rootfs、元数据包和统一 `os-image` 打包产物，便于在 CI / 构建机上继续串接真正的 block-image 生成、刷写和签名流程。
 
 ## Self-hosted runner 快速开始
 
