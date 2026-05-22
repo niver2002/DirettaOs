@@ -29,6 +29,8 @@ jobs:
       DIRETTA_SDK_PATH: ${{ vars.DIRETTA_SDK_PATH != '' && vars.DIRETTA_SDK_PATH || format('{0}/audio/DirettaHostSDK_149', env.HOME) }}
       BASE_IMAGE_PATH: ${{ github.event.inputs.base_image_path || vars.BASE_IMAGE_PATH }}
       BOOT_FIRMWARE_DIR: ${{ github.event.inputs.boot_firmware_dir || vars.BOOT_FIRMWARE_DIR }}
+      BOARD_PACK: ${{ github.event.inputs.board_pack || 'raspberry-pi-5' }}
+      PAYLOAD_MODE: ${{ github.event.inputs.payload_mode || 'diretta-personal-use' }}
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -44,17 +46,15 @@ jobs:
           sudo apt-get update
           sudo apt-get install -y dosfstools e2fsprogs mount parted rsync util-linux
 
-      - name: Build appliance image
+      - name: Build final OS image
         run: |
-          chmod +x scripts/build-appliance-image.sh
-          ARGS=(--board-pack "${{ github.event.inputs.board_pack || 'raspberry-pi-5' }}" --payload-mode "${{ github.event.inputs.payload_mode || 'diretta-personal-use' }}")
-          if [ -n "${BASE_IMAGE_PATH}" ]; then
-            ARGS+=(--base-image "${BASE_IMAGE_PATH}")
-          fi
-          if [ -n "${BOOT_FIRMWARE_DIR}" ]; then
-            ARGS+=(--boot-firmware-dir "${BOOT_FIRMWARE_DIR}")
-          fi
-          DIRETTA_SDK_PATH="${DIRETTA_SDK_PATH}" ./scripts/build-appliance-image.sh "${ARGS[@]}"
+          chmod +x scripts/build-final-os-image.sh
+          DIRETTA_SDK_PATH="${DIRETTA_SDK_PATH}" \
+          BASE_IMAGE_PATH="${BASE_IMAGE_PATH}" \
+          BOOT_FIRMWARE_DIR="${BOOT_FIRMWARE_DIR}" \
+          BOARD_PACK="${BOARD_PACK}" \
+          PAYLOAD_MODE="${PAYLOAD_MODE}" \
+          ./scripts/build-final-os-image.sh
 
       - name: Upload appliance artifacts
         uses: actions/upload-artifact@v4

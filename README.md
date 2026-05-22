@@ -30,6 +30,32 @@ DirettaOs/
 └── third_party/                      # 第三方资产说明（归档文件走同步盘/外部存储）
 ```
 
+## 一键构建最终 OS 镜像
+
+如果 runner / 云电脑上已经准备好 SDK，并且已经有 `BASE_IMAGE_PATH` 或 `BOOT_FIRMWARE_DIR`，可以直接用最终入口脚本：
+
+```bash
+chmod +x scripts/build-final-os-image.sh
+DIRETTA_SDK_PATH=$HOME/audio/DirettaHostSDK_149 \
+BASE_IMAGE_PATH=/path/to/base-image.img \
+./scripts/build-final-os-image.sh
+```
+
+或者：
+
+```bash
+chmod +x scripts/build-final-os-image.sh
+DIRETTA_SDK_PATH=$HOME/audio/DirettaHostSDK_149 \
+BOOT_FIRMWARE_DIR=/path/to/boot-firmware \
+./scripts/build-final-os-image.sh
+```
+
+这个脚本会：
+- 自动更新仓库
+- 自动调用镜像装配脚本
+- 自动产出最终 `.img`（当输入完整时）
+- 将产物保留在 `out/artifacts/`
+
 ## 自动化构建 appliance rootfs
 
 仓库现在提供一个可直接执行的自动化打包脚本：
