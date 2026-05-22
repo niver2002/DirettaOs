@@ -30,10 +30,10 @@ jobs:
   build:
     runs-on: [self-hosted, linux, x64, diretta-builder]
     env:
-      DIRETTA_SDK_PATH: ${{ vars.DIRETTA_SDK_PATH != '' && vars.DIRETTA_SDK_PATH || format('{0}/audio/DirettaHostSDK_149', env.HOME) }}
+      DIRETTA_SDK_PATH: ${{ vars.DIRETTA_SDK_PATH }}
       BASE_IMAGE_PATH: ${{ github.event.inputs.base_image_path || vars.BASE_IMAGE_PATH }}
       BOOT_FIRMWARE_DIR: ${{ github.event.inputs.boot_firmware_dir || vars.BOOT_FIRMWARE_DIR }}
-      PREBUILT_IMAGE_ZIP: ${{ github.event.inputs.prebuilt_image_zip || vars.PREBUILT_IMAGE_ZIP || format('{0}/Downloads/diretta_RaspberryPi5_149_16_includeRoonBridge.zip', env.HOME) }}
+      PREBUILT_IMAGE_ZIP: ${{ github.event.inputs.prebuilt_image_zip || vars.PREBUILT_IMAGE_ZIP }}
       BOARD_PACK: ${{ github.event.inputs.board_pack || 'raspberry-pi-5' }}
       PAYLOAD_MODE: ${{ github.event.inputs.payload_mode || 'diretta-personal-use' }}
     steps:
@@ -42,7 +42,10 @@ jobs:
 
       - name: Verify SDK
         run: |
+          export DIRETTA_SDK_PATH="${DIRETTA_SDK_PATH:-$HOME/audio/DirettaHostSDK_149}"
+          export PREBUILT_IMAGE_ZIP="${PREBUILT_IMAGE_ZIP:-$HOME/Downloads/diretta_RaspberryPi5_149_16_includeRoonBridge.zip}"
           echo "DIRETTA_SDK_PATH=${DIRETTA_SDK_PATH}"
+          echo "PREBUILT_IMAGE_ZIP=${PREBUILT_IMAGE_ZIP}"
           test -d "${DIRETTA_SDK_PATH}/Host"
           test -d "${DIRETTA_SDK_PATH}/lib"
 
@@ -53,6 +56,8 @@ jobs:
 
       - name: Build final OS image
         run: |
+          export DIRETTA_SDK_PATH="${DIRETTA_SDK_PATH:-$HOME/audio/DirettaHostSDK_149}"
+          export PREBUILT_IMAGE_ZIP="${PREBUILT_IMAGE_ZIP:-$HOME/Downloads/diretta_RaspberryPi5_149_16_includeRoonBridge.zip}"
           chmod +x scripts/build-final-os-image.sh
           DIRETTA_SDK_PATH="${DIRETTA_SDK_PATH}" \
           BASE_IMAGE_PATH="${BASE_IMAGE_PATH}" \
